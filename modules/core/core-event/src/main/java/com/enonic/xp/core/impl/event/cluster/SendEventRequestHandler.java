@@ -5,8 +5,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
@@ -19,23 +17,25 @@ import com.enonic.xp.event.EventPublisher;
 public final class SendEventRequestHandler
     implements MessageListener<SendEventRequest>
 {
-    private HazelcastInstance hz;
+    private HazelcastInstance hazelcastInstance;
 
     private EventPublisher eventPublisher;
+
+    private ITopic<SendEventRequest> topic;
+
+    private String registrationId;
 
     @Activate
     public void activate()
     {
-        Config cfg = new Config();
-        hz = Hazelcast.newHazelcastInstance( cfg );
-        ITopic<SendEventRequest> topic = hz.getTopic( ClusterEventSender.ACTION );
-        topic.addMessageListener( this );
+        topic = hazelcastInstance.getTopic( ClusterEventSender.ACTION );
+        registrationId = topic.addMessageListener( this );
     }
 
     @Deactivate
     public void deactivate()
     {
-        hz.shutdown();
+        topic.removeMessageListener( registrationId );
     }
 
     @Override
@@ -48,10 +48,15 @@ public final class SendEventRequestHandler
         this.eventPublisher.publish( forwardedEvent );
     }
 
-
     @Reference
     public void setEventPublisher( final EventPublisher eventPublisher )
     {
         this.eventPublisher = eventPublisher;
+    }
+
+    @Reference
+    public void setHazelcastInstance( final HazelcastInstance hazelcastInstance )
+    {
+        this.hazelcastInstance = hazelcastInstance;
     }
 }

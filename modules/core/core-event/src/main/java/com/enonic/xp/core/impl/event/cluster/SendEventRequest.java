@@ -8,7 +8,7 @@ import com.enonic.xp.event.Event;
 public final class SendEventRequest
     implements Serializable
 {
-    private Event event;
+    private final Event event;
 
     public SendEventRequest( final Event event )
     {
@@ -26,16 +26,16 @@ public final class SendEventRequest
         return new SerializedForm( this.event );
     }
 
-    static class SerializedForm
+    private static class SerializedForm
         implements Serializable
     {
-        private final String type;
+        final String type;
 
-        private final long timestamp;
+        final long timestamp;
 
-        private final boolean distributed;
+        final boolean distributed;
 
-        private final Map<String, Object> data;
+        final Map<String, Object> data;
 
         SerializedForm( Event event )
         {
@@ -50,10 +50,8 @@ public final class SendEventRequest
             final Event.Builder eventBuilder = Event.create( type ).
                 timestamp( timestamp ).
                 distributed( distributed );
-            for ( Map.Entry<String, Object> dataEntry : data.entrySet() )
-            {
-                eventBuilder.value( dataEntry.getKey(), dataEntry.getValue() );
-            }
+
+            data.forEach( eventBuilder::value );
 
             return new SendEventRequest( eventBuilder.build() );
         }

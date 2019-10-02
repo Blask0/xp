@@ -2,10 +2,8 @@ package com.enonic.xp.core.impl.event.cluster;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 
@@ -16,7 +14,7 @@ import com.enonic.xp.event.EventListener;
 public final class ClusterEventSender
     implements EventListener
 {
-    private HazelcastInstance hz;
+    private HazelcastInstance hazelcastInstance;
 
     private ITopic<SendEventRequest> topic;
 
@@ -25,15 +23,7 @@ public final class ClusterEventSender
     @Activate
     public void activate()
     {
-        Config cfg = new Config();
-        hz = Hazelcast.newHazelcastInstance( cfg );
-        topic = hz.getTopic( ACTION );
-    }
-
-    @Deactivate
-    public void deactivate()
-    {
-        hz.shutdown();
+        topic = hazelcastInstance.getTopic( ACTION );
     }
 
     @Override
@@ -43,5 +33,11 @@ public final class ClusterEventSender
         {
             topic.publish( new SendEventRequest( event ) );
         }
+    }
+
+    @Reference
+    public void setHazelcastInstance( final HazelcastInstance hazelcastInstance )
+    {
+        this.hazelcastInstance = hazelcastInstance;
     }
 }

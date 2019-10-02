@@ -1,9 +1,12 @@
 package com.enonic.xp.core.impl.event.cluster;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.hazelcast.config.Config;
@@ -14,60 +17,65 @@ import com.hazelcast.core.Message;
 
 import com.enonic.xp.event.Event;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-
+@Tag("hazelcast")
 class ClusterEventSenderTest
 {
     private ClusterEventSender clusterEventSender;
 
-    private HazelcastInstance hz;
+    private HazelcastInstance remoteHz;
 
-    private ITopic<Event> topic;
+    private HazelcastInstance localHz;
+
+    private ITopic<SendEventRequest> topic;
 
     @BeforeEach
     void setUp()
     {
-        //Mocks the Elasticsearch nodes
         Config cfg = new Config();
-        hz = Hazelcast.newHazelcastInstance( cfg );
-        topic = hz.getTopic( ClusterEventSender.ACTION );
+
+        localHz = Hazelcast.newHazelcastInstance( cfg );
+        topic = localHz.getTopic( ClusterEventSender.ACTION );
+
+        remoteHz = Hazelcast.newHazelcastInstance( cfg );
 
         clusterEventSender = new ClusterEventSender();
+        clusterEventSender.setHazelcastInstance( remoteHz );
         clusterEventSender.activate();
     }
 
     @AfterEach
     void tearDown()
     {
-        clusterEventSender.deactivate();
-        hz.shutdown();
+        remoteHz.shutdown();
+        localHz.shutdown();
     }
 
     @Test
     void onEvent()
         throws Exception
     {
-        AtomicReference<Message<Event>> received = new AtomicReference<>();
+        CompletableFuture<Message<SendEventRequest>> received = new CompletableFuture<>();
         final Event event = Event.create( "aaa" ).distributed( true ).build();
 
-        topic.addMessageListener( received::set );
+        topic.addMessageListener( received::complete );
         this.clusterEventSender.onEvent( event );
-        Thread.sleep( 10000 );
-        assertNotNull( received.get() );
+
+        assertEquals( received.get( 10, TimeUnit.SECONDS ).getMessageObject().getEvent().getType(), "aaa" );
     }
 
 
     @Test
     void onNonDistributableEvent()
     {
-        AtomicReference<Message<Event>> received = new AtomicReference<>();
+        CompletableFuture<Message<SendEventRequest>> received = new CompletableFuture<>();
 
         final Event event = Event.create( "aaa" ).build();
+
+        topic.addMessageListener( received::complete );
         this.clusterEventSender.onEvent( event );
-        topic.addMessageListener( received::set );
-        this.clusterEventSender.onEvent( event );
-        assertNull( received.get() );
+        assertThrows( TimeoutException.class, () -> received.get( 10, TimeUnit.SECONDS ) );
     }
 }
