@@ -1,90 +1,34 @@
 package com.enonic.xp.impl.task.cluster;
 
-import java.util.List;
+import java.io.Serializable;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
 
-import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.transport.TransportException;
-import org.elasticsearch.transport.TransportResponseHandler;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-
-import com.enonic.xp.task.TaskInfo;
-import com.enonic.xp.util.Exceptions;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.HazelcastInstanceAware;
 
 public class TaskTransportResponseHandler
-    implements TransportResponseHandler<TaskTransportResponse>
+    implements Callable<TaskTransportResponse>, Serializable, HazelcastInstanceAware
 {
-    private static final long THREAD_TIMEOUT = TaskTransportRequestSenderImpl.TRANSPORT_REQUEST_TIMEOUT + 1_000l;
+    private final TaskTransportRequest request;
 
-    private final ImmutableList.Builder<TaskInfo> taskInfos = ImmutableList.builder();
+    private transient TaskTransportRequestHandler handler;
 
-    private int awaitingResponseCount;
-
-    private TransportException transportException;
-
-    public TaskTransportResponseHandler( final int responseCount )
+    public TaskTransportResponseHandler( TaskTransportRequest request )
     {
-        Preconditions.checkArgument( responseCount > 0, "responseCount must be greater than 0" );
-        this.awaitingResponseCount = responseCount;
-    }
-
-
-    @Override
-    public TaskTransportResponse newInstance()
-    {
-        return new TaskTransportResponse();
+        this.request = request;
     }
 
     @Override
-    public synchronized void handleResponse( final TaskTransportResponse response )
+    public void setHazelcastInstance( final HazelcastInstance hazelcastInstance )
     {
-        taskInfos.addAll( response.getTaskInfos() );
-        awaitingResponseCount--;
-        this.notifyAll();
+        ConcurrentMap<String, Object> context = hazelcastInstance.getUserContext();
+        handler = (TaskTransportRequestHandler) context.get( "TaskTransportRequestHandler" );
     }
 
     @Override
-    public synchronized void handleException( final TransportException e )
+    public TaskTransportResponse call()
     {
-        transportException = e;
-        this.notifyAll();
-    }
-
-    @Override
-    public String executor()
-    {
-        return ThreadPool.Names.MANAGEMENT;
-    }
-
-    public synchronized List<TaskInfo> getTaskInfos()
-    {
-        final long startTime = System.currentTimeMillis();
-        while ( transportException == null && awaitingResponseCount > 0 )
-        {
-            long deltaTime = System.currentTimeMillis() - startTime;
-            if ( deltaTime >= THREAD_TIMEOUT )
-            {
-                //Should never happen. An ES timeout exception should have been handled
-                throw new TaskTransportTimeoutException( deltaTime );
-            }
-
-            try
-            {
-                this.wait( THREAD_TIMEOUT );
-            }
-            catch ( InterruptedException e )
-            {
-                throw Exceptions.unchecked( e );
-            }
-        }
-
-        if ( transportException != null )
-        {
-            throw transportException;
-        }
-        return taskInfos.build();
-
-
+        return handler.messageReceived( request );
     }
 }

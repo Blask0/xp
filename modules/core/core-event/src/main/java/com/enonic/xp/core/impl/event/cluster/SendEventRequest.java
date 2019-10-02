@@ -21,9 +21,9 @@ public final class SendEventRequest
     }
 
 
-    Object writeReplace()
+    private Object writeReplace()
     {
-        return new SerializedForm( this.event );
+        return new SerializedForm( this );
     }
 
     private static class SerializedForm
@@ -37,8 +37,9 @@ public final class SendEventRequest
 
         final Map<String, Object> data;
 
-        SerializedForm( Event event )
+        SerializedForm( SendEventRequest request )
         {
+            Event event = request.event;
             type = event.getType();
             timestamp = event.getTimestamp();
             distributed = event.isDistributed();
