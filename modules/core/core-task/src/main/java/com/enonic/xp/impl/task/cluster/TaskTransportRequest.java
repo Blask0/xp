@@ -37,7 +37,7 @@ public final class TaskTransportRequest
         return new SerializedForm( this );
     }
 
-    private static class SerializedForm
+    static class SerializedForm
         implements Serializable
     {
         private final Type type;

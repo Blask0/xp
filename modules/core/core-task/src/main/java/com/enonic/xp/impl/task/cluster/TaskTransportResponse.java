@@ -17,11 +17,11 @@ import com.enonic.xp.task.TaskState;
 public final class TaskTransportResponse
     implements Serializable
 {
-    private List<TaskInfo> taskInfos;
+    private final ImmutableList<TaskInfo> taskInfos;
 
     public TaskTransportResponse( final List<TaskInfo> taskInfos )
     {
-        this.taskInfos = taskInfos;
+        this.taskInfos = ImmutableList.copyOf( taskInfos );
     }
 
     public List<TaskInfo> getTaskInfos()
@@ -34,7 +34,7 @@ public final class TaskTransportResponse
         return new SerializedForm( this );
     }
 
-    private static class SerializedForm
+    static class SerializedForm
         implements Serializable
     {
         private final SerializedFormTaskInfo[] taskInfos;
@@ -71,11 +71,10 @@ public final class TaskTransportResponse
                 build();
         }
 
-
         private static final long serialVersionUID = 0;
     }
 
-    private static class SerializedFormTaskInfo
+    static class SerializedFormTaskInfo
         implements Serializable
     {
         private final String taskId;

@@ -26,7 +26,7 @@ public final class SendEventRequest
         return new SerializedForm( this );
     }
 
-    private static class SerializedForm
+    static class SerializedForm
         implements Serializable
     {
         final String type;

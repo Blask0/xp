@@ -1,5 +1,6 @@
 package com.enonic.xp.impl.task.cluster;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -12,7 +13,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
-import com.google.common.collect.ImmutableList;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
 import com.hazelcast.core.Member;
@@ -63,7 +63,7 @@ public final class TaskTransportRequestSenderImpl
 
     private List<TaskInfo> send( final TaskTransportRequest request )
     {
-        final ImmutableList.Builder<TaskInfo> taskInfoBuilder = ImmutableList.builder();
+        final List<TaskInfo> taskInfoBuilder = new ArrayList<>();
         final Map<Member, Future<TaskTransportResponse>> resultsFromMembers =
             executorService.submitToAllMembers( new TaskTransportResponseHandler( request ) );
 
@@ -84,7 +84,7 @@ public final class TaskTransportRequestSenderImpl
                 throw ExceptionUtil.rethrow( e );
             }
         }
-        return taskInfoBuilder.build();
+        return taskInfoBuilder;
     }
 
     @Reference
