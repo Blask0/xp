@@ -21,6 +21,7 @@ import com.enonic.xp.issue.IssueComment;
 import com.enonic.xp.issue.IssueStatus;
 import com.enonic.xp.issue.IssueType;
 import com.enonic.xp.mail.MailMessage;
+import com.enonic.xp.util.StringTemplate;
 
 public abstract class IssueMailMessageGenerator<P extends IssueNotificationParams>
 {
@@ -101,7 +102,7 @@ public abstract class IssueMailMessageGenerator<P extends IssueNotificationParam
 
     private String generateMessageBody()
     {
-        final Map messageParams = new HashMap<>();
+        final Map<String, String> messageParams = new HashMap<>();
         final boolean showComments = this.shouldShowComments();
         final String description = params.getIssue().getDescription();
         final boolean isRequest = this.isPublishRequest();
@@ -111,13 +112,13 @@ public abstract class IssueMailMessageGenerator<P extends IssueNotificationParam
         final String latestCommentTitle = params.getLocaleMessageResolver().localizeMessage( "issue.email.latestCommentTitle", "Latest comment" );
 
         messageParams.put( "id", idString );
-        messageParams.put( "index", params.getIssue().getIndex() );
+        messageParams.put( "index", String.valueOf( params.getIssue().getIndex() ) );
         messageParams.put( "display-issue-icon", isRequest ? "none" : "block" );
         messageParams.put( "display-request-icon", isRequest ? "inline-block" : "none" );
         messageParams.put( "icon-color", isOpen ? "#609E24" : "#777" );
         messageParams.put( "idShort", idString.substring( 0, 9 ) );
         messageParams.put( "title", generateMessageTitle() );
-        messageParams.put( "status", params.getIssue().getStatus() );
+        messageParams.put( "status", params.getIssue().getStatus().toString() );
         messageParams.put( "statusBgColor", isOpen ? "#2c76e9" : "#777" );
         messageParams.put( "creator", params.getIssue().getCreator().getId() );
         messageParams.put( "description", description );
@@ -128,7 +129,7 @@ public abstract class IssueMailMessageGenerator<P extends IssueNotificationParam
         messageParams.put( "showDetailsCaption", showDetailsCaption );
         messageParams.put( "latestCommentTitle", latestCommentTitle );
 
-        return new StrSubstitutor( messageParams ).replace( load( "email.html" ) );
+        return StringTemplate.interpolate( load( "email.html" ), messageParams );
     }
 
     private String load( final String name )
