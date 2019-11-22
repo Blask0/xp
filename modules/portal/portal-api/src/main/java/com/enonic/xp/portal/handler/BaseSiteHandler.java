@@ -15,9 +15,9 @@ public abstract class BaseSiteHandler
 {
     private static RepositoryId findRepository( final String baseSubPath )
     {
-        final int index = baseSubPath.indexOf( '/' );
+        final int index = baseSubPath.indexOf( "/" );
         final String result = baseSubPath.substring( 0, index > 0 ? index : baseSubPath.length() );
-        if ( Strings.isNullOrEmpty( result ) )
+        if ( result.isEmpty() )
         {
             throw WebException.notFound( "Repository needs to be specified" );
         }
