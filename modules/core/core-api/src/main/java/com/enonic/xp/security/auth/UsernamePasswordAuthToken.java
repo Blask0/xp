@@ -17,19 +17,26 @@ public final class UsernamePasswordAuthToken
 
     public void setUsername( final String username )
     {
-        final String[] userParts = username.split( "\\\\" );
-        if ( userParts.length != 2 )
+        if ( username.chars().filter( c -> c == '\\' ).count() == 1 )
         {
-            this.username = username;
-            return;
-        }
+            final String[] userParts = username.split( "\\\\" );
+            if ( userParts.length != 2 )
+            {
+                this.username = username;
+                return;
+            }
 
-        try
-        {
-            setIdProvider( IdProviderKey.from( userParts[0] ) );
-            this.username = userParts[1];
+            try
+            {
+                setIdProvider( IdProviderKey.from( userParts[0] ) );
+                this.username = userParts[1];
+            }
+            catch ( java.lang.IllegalArgumentException e )
+            {
+                this.username = username;
+            }
         }
-        catch ( java.lang.IllegalArgumentException e )
+        else
         {
             this.username = username;
         }
